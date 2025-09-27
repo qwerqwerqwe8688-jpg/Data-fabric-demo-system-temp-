@@ -12,11 +12,5 @@ cd /d E:\py_temp_project1\frontend
 # 命令行中运行前端
 npm start
 
-# 运行生成模拟示例资产
-python backend/scripts/create_sample_data.py
-
-# 连接测试脚本
-python test_connection.py
-
-# 采集真实元数据
+# 采集并处理真实元数据
 python backend/scripts/run_collectors.py
