@@ -1,0 +1,70 @@
+.App {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.search-container {
+  margin-bottom: 30px;
+}
+
+.search-bar {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.search-bar input {
+  padding: 10px;
+  flex: 1;
+  max-width: 400px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.search-bar button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-bar button:hover {
+  background-color: #0056b3;
+}
+
+.results {
+  display: grid;
+  gap: 15px;
+}
+
+.asset-card {
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 5px;
+  transition: box-shadow 0.3s;
+}
+
+.asset-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.asset-card h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.asset-card p {
+  margin: 5px 0;
+  color: #666;
+}
+
+.lineage-section {
+  margin-top: 30px;
+}
+
+.lineage-section h2 {
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}

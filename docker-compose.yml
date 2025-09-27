@@ -1,0 +1,42 @@
+# docker-compose.yml
+services:
+  neo4j:
+    image: neo4j:5.9.0
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    networks:
+      - data-fabric-network
+
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - data-fabric-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - neo4j
+      - elasticsearch
+    environment:
+      - NEO4J_HOST=neo4j
+    networks:
+      - data-fabric-network
+
+networks:
+  data-fabric-network:
+    driver: bridge
