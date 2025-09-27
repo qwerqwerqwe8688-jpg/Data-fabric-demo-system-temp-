@@ -14,7 +14,7 @@ services:
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_plugins:/plugins
-    mem_limit: 2g  # 根据需要调整内存限制
+    mem_limit: 2g  # 调整内存限制为2g
 
   elasticsearch:
     image: elasticsearch:7.17.0
