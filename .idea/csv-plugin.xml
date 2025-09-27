@@ -101,6 +101,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\data\table_15.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\data\table_16.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="\data\table_18.csv">
           <value>
             <Attribute>
@@ -109,6 +123,13 @@
           </value>
         </entry>
         <entry key="\data\table_19.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\data\元数据摘要.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

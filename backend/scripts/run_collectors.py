@@ -68,7 +68,7 @@ def run_lineage_discovery(graph_service):
 
         # 设置数据路径
         csv_root = project_root / "data"
-        sql_dir = project_root / "sql_scripts"
+        sql_dir = project_root / "sql"
 
         # 确保目录存在
         csv_root.mkdir(exist_ok=True)

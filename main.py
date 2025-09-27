@@ -147,7 +147,7 @@ def run_lineage_discovery():
     from pathlib import Path
 
     csv_root = Path(__file__).resolve().parent.parent / "data"
-    sql_dir  = Path(__file__).resolve().parent.parent / "sql_scripts"
+    sql_dir  = Path(__file__).resolve().parent.parent / "sql"
 
     svc = AutoLineageService(graph_service)
     print("\n开始自动血缘发现（采集后）...")
