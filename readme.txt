@@ -6,7 +6,7 @@ docker-compose up -d neo4j elasticsearch
 # 启动后端服务
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# 以管理员模式进入命令行(路径需改成项目对应绝对路径)
+# 管理员模式进入命令行(路径改成项目对应绝对路径)
 cd /d E:\py_temp_project1\frontend
 
 # 命令行中运行前端
