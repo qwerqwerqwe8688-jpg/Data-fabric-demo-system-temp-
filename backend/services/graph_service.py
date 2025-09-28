@@ -1,7 +1,7 @@
 # services/graph_service.py
+import json
 from neo4j import GraphDatabase
 from backend.models.metadata import *
-
 
 class GraphService:
     def __init__(self, uri, user, password):
@@ -12,11 +12,10 @@ class GraphService:
 
     def create_asset(self, asset: DataAsset):
         """
-        创建资产节点，并自动补 :Column 标签（当 type=='column' 时）
-        保持与现有代码 100% 兼容
+        创建资产节点，支持所有类型包括Row、Sheet、Database
         """
         with self.driver.session() as session:
-            # 1. 基础 DataAsset 节点必须存在
+            # 基础DataAsset节点
             query = """
             MERGE (a:DataAsset {id: $id})
             SET a.name = $name,
@@ -27,20 +26,75 @@ class GraphService:
                 a.created_time = $created_time,
                 a.updated_time = $updated_time
             """
-            # 2. 如果是列，额外打上 :Column 标签
+
+            # 根据类型添加额外标签和属性
             if asset.type == "column":
                 query += " SET a:Column"
+                if hasattr(asset, 'data_type'):
+                    query += ", a.data_type = $data_type"
+            elif asset.type == "row":
+                query += " SET a:Row"
+                # 添加行特定属性
+                if hasattr(asset, 'table_id'):
+                    query += ", a.table_id = $table_id"
+                if hasattr(asset, 'row_hash'):
+                    query += ", a.row_hash = $row_hash"
+                if hasattr(asset, 'row_data'):
+                    # 将行数据存储为JSON字符串
+                    query += ", a.row_data = $row_data"
+                if hasattr(asset, 'row_index'):
+                    query += ", a.row_index = $row_index"
+            elif asset.type == "sheet":
+                query += " SET a:Sheet"
+                if hasattr(asset, 'file_id'):
+                    query += ", a.file_id = $file_id"
+                if hasattr(asset, 'sheet_name'):
+                    query += ", a.sheet_name = $sheet_name"
+                if hasattr(asset, 'row_count'):
+                    query += ", a.row_count = $row_count"
+                if hasattr(asset, 'column_count'):
+                    query += ", a.column_count = $column_count"
+            elif asset.type == "database":
+                query += " SET a:Database"
+                if hasattr(asset, 'file_path'):
+                    query += ", a.file_path = $file_path"
+                if hasattr(asset, 'table_count'):
+                    query += ", a.table_count = $table_count"
+                if hasattr(asset, 'connection_string'):
+                    query += ", a.connection_string = $connection_string"
+
             query += " RETURN a"
 
-            session.run(query,
-                        id=asset.id,
-                        name=asset.name,
-                        type=asset.type,
-                        description=asset.description or "",
-                        owner=asset.owner or "",
-                        tags=asset.tags or [],
-                        created_time=asset.created_time,
-                        updated_time=asset.updated_time)
+            params = {
+                "id": asset.id,
+                "name": asset.name,
+                "type": asset.type,
+                "description": asset.description or "",
+                "owner": asset.owner or "",
+                "tags": asset.tags or [],
+                "created_time": asset.created_time,
+                "updated_time": asset.updated_time
+            }
+
+            # 添加类型特定参数
+            if asset.type == "column" and hasattr(asset, 'data_type'):
+                params["data_type"] = asset.data_type
+            elif asset.type == "row" and hasattr(asset, 'table_id'):
+                params["table_id"] = asset.table_id
+                params["row_hash"] = asset.row_hash
+                params["row_data"] = json.dumps(asset.row_data, ensure_ascii=False) if hasattr(asset, 'row_data') else "{}"
+                params["row_index"] = getattr(asset, 'row_index', 0)
+            elif asset.type == "sheet":
+                params["file_id"] = getattr(asset, 'file_id', "")
+                params["sheet_name"] = getattr(asset, 'sheet_name', "")
+                params["row_count"] = getattr(asset, 'row_count', 0)
+                params["column_count"] = getattr(asset, 'column_count', 0)
+            elif asset.type == "database":
+                params["file_path"] = getattr(asset, 'file_path', "")
+                params["table_count"] = getattr(asset, 'table_count', 0)
+                params["connection_string"] = getattr(asset, 'connection_string', "")
+
+            session.run(query, **params)
 
     def create_lineage(self, source_id: str, target_id: str, relationship: str):
         with self.driver.session() as session:

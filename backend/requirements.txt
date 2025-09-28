@@ -8,3 +8,4 @@ sqlalchemy==2.0.23
 elasticsearch==7.17.0
 python-multipart==0.0.6
 pyyaml==5.1
+openpyxl=3.0.0

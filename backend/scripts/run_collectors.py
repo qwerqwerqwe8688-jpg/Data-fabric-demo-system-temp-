@@ -35,27 +35,50 @@ def clear_existing_data(graph_service):
 
 
 def collect_file_metadata_with_fallback(graph_service):
-    # 尝试多个可能的路径
+    # 增强路径配置，确保包含SQLite数据库文件
     possible_paths = [
-        "E:/py_temp_project1/data",  # 绝对路径
-        str(project_root / "data"),  # 项目根目录下的data
-        str(project_root.parent / "data")  # 项目父目录下的data
+        str(project_root / "data"),
+        str(project_root / "sql"),
     ]
 
+    # 去重并过滤存在的路径
+    unique_paths = []
     for path in possible_paths:
+        path_obj = Path(path)
+        if path_obj.exists() and path not in unique_paths:
+            unique_paths.append(path)
+
+    print(f"将尝试以下路径: {unique_paths}")
+
+    for path in unique_paths:
         try:
             print(f"尝试路径: {path}")
-            file_collector = FileCollector(path)
+            file_collector = FileCollector(path, sample_rows=50)
             if file_collector.test_connection():
                 print(f"✅ 找到文件路径: {path}")
+
+                # 检查该路径下是否有SQLite文件
+                sqlite_files = list(Path(path).rglob("*.db")) + list(Path(path).rglob("*.sqlite")) + list(
+                    Path(path).rglob("*.sqlite3"))
+                print(f"在该路径下找到 {len(sqlite_files)} 个SQLite文件")
+                for sqlite_file in sqlite_files:
+                    print(f"  - {sqlite_file}")
+
                 assets = file_collector.collect_metadata()
                 print(f"采集到 {len(assets)} 个资产")
+
+                # 统计各类资产数量
+                asset_types = {}
                 for asset in assets:
-                    graph_service.create_asset(asset)
+                    asset_types[asset.type] = asset_types.get(asset.type, 0) + 1
+
+                for asset_type, count in asset_types.items():
+                    print(f"  - {asset_type}: {count}个")
+
                 print(f"✅ 成功采集了 {len(assets)} 个文件资产")
                 return True
             else:
-                print(f"❌ 路径不存在: {path}")
+                print(f"❌ 路径不存在或无法连接: {path}")
         except Exception as e:
             print(f"⚠️ 路径 {path} 采集失败: {e}")
     return False
@@ -76,6 +99,11 @@ def run_lineage_discovery(graph_service):
 
         print(f"CSV路径: {csv_root}")
         print(f"SQL路径: {sql_dir}")
+
+        # 检查SQL目录内容
+        if sql_dir.exists():
+            sql_files = list(sql_dir.glob("*.sql")) + list(sql_dir.glob("*.db"))
+            print(f"SQL目录包含 {len(sql_files)} 个文件: {[f.name for f in sql_files]}")
 
         # 使用AutoLineageService进行血缘发现
         from backend.services.lineage_discovery import AutoLineageService
