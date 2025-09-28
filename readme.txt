@@ -1,4 +1,4 @@
-# Python 3.9开发
+# Python 3.9
 
 # 启动基础设施
 docker-compose up -d neo4j elasticsearch
@@ -14,3 +14,7 @@ npm start
 
 # 采集并处理真实元数据
 python backend/scripts/run_collectors.py
+
+# 访问localhost:3000进入系统主搜索页面
+
+# 访问localhost:7474进入neo4j图数据库页面
