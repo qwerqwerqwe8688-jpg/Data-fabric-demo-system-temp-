@@ -31,6 +31,41 @@ class FileCollector(BaseMetadataCollector):
         row_str = json.dumps(row_data, sort_keys=True, ensure_ascii=False)
         return hashlib.md5(row_str.encode('utf-8')).hexdigest()
 
+    def _generate_row_name(self, table_name: str, row_index: int, row_data: Dict[str, Any]) -> str:
+        """生成更清晰的行数据名称"""
+        # 尝试提取关键字段作为标识
+        key_fields = []
+
+        # 优先查找常见的主键字段
+        for key_field in ['id', 'ID', '编号', '序号', 'order_id', 'customer_id', 'product_id', 'promo_id']:
+            if key_field in row_data and row_data[key_field]:
+                key_fields.append(f"{key_field}:{row_data[key_field]}")
+                break
+
+        # 如果没有找到主键字段，尝试使用名称字段
+        if not key_fields:
+            for name_field in ['name', '名称', 'title', '产品名称', '促销名称', 'customer_name']:
+                if name_field in row_data and row_data[name_field]:
+                    # 截取前20个字符避免名称过长
+                    name_value = str(row_data[name_field])[:20]
+                    key_fields.append(f"{name_field}:{name_value}")
+                    break
+
+        # 如果还是没有找到关键字段，使用前两个非空字段
+        if not key_fields:
+            non_empty_fields = [(k, v) for k, v in row_data.items() if v not in [None, '']]
+            for i, (field, value) in enumerate(non_empty_fields[:2]):  # 最多取前两个字段
+                if i < 2:
+                    value_str = str(value)[:15]  # 截断长值
+                    key_fields.append(f"{field}:{value_str}")
+
+        # 构建最终名称
+        if key_fields:
+            key_info = " | ".join(key_fields)
+            return f"{table_name}记录{row_index}[{key_info}]"
+        else:
+            return f"{table_name}记录{row_index}"
+
     def collect_metadata(self) -> List[DataAsset]:
         assets: List[DataAsset] = []
         now = datetime.now().isoformat()
@@ -117,7 +152,7 @@ class FileCollector(BaseMetadataCollector):
             assets.append(col_asset)
 
         # 3. 行级资产收集
-        row_assets = self._collect_csv_row_metadata(file_path, safe_file_id, columns, timestamp)
+        row_assets = self._collect_csv_row_metadata(file_path, safe_file_id, file_path.stem, columns, timestamp)
         assets.extend(row_assets)
 
         return assets
@@ -194,7 +229,8 @@ class FileCollector(BaseMetadataCollector):
                     assets.append(col_asset)
 
                 # 5. 行级资产收集
-                row_assets = self._collect_excel_row_metadata(sheet, safe_file_id, safe_sheet_id, columns, timestamp)
+                row_assets = self._collect_excel_row_metadata(sheet, safe_file_id, safe_sheet_id, sheet_name, columns,
+                                                              timestamp)
                 assets.extend(row_assets)
 
             workbook.close()
@@ -295,8 +331,7 @@ class FileCollector(BaseMetadataCollector):
 
                 # 6. 行级资产收集
                 row_assets = self._collect_sqlite_row_metadata(conn, table_name, safe_db_id, safe_table_id,
-                                                               column_names,
-                                                               timestamp)
+                                                               column_names, timestamp)
                 assets.extend(row_assets)
 
             conn.close()
@@ -357,8 +392,8 @@ class FileCollector(BaseMetadataCollector):
 
         return inferred_types
 
-    def _collect_csv_row_metadata(self, file_path: Path, file_id: str, columns: List[str], timestamp: str) -> List[
-        DataRow]:
+    def _collect_csv_row_metadata(self, file_path: Path, file_id: str, table_name: str, columns: List[str],
+                                  timestamp: str) -> List[DataRow]:
         """收集CSV行级元数据"""
         row_assets = []
         try:
@@ -369,13 +404,16 @@ class FileCollector(BaseMetadataCollector):
                 row_data = row.to_dict()
                 row_hash = self._calculate_row_hash(row_data)
 
+                # 生成更清晰的行名称
+                row_name = self._generate_row_name(table_name, idx, row_data)
+
                 row_asset = DataRow(
                     id=f"file.{file_id}.row_{idx}_{row_hash[:8]}",
-                    name=f"行_{idx}",
+                    name=row_name,  # 使用新生成的清晰名称
                     type="row",
-                    description=f"数据行 {idx} in {file_path.name}",
+                    description=f"数据行 {idx} in {file_path.name} - 包含{len(row_data)}个字段",
                     owner="文件采集器",
-                    tags=["data_row", "行数据"],
+                    tags=["data_row", "行数据", "csv数据"],
                     created_time=timestamp,
                     updated_time=timestamp,
                     table_id=f"file.{file_id}",
@@ -390,8 +428,8 @@ class FileCollector(BaseMetadataCollector):
 
         return row_assets
 
-    def _collect_excel_row_metadata(self, sheet, file_id: str, sheet_id: str, columns: List[str], timestamp: str) -> \
-            List[DataRow]:
+    def _collect_excel_row_metadata(self, sheet, file_id: str, sheet_id: str, sheet_name: str, columns: List[str],
+                                    timestamp: str) -> List[DataRow]:
         """收集Excel行级元数据"""
         row_assets = []
         try:
@@ -411,13 +449,16 @@ class FileCollector(BaseMetadataCollector):
                 row_hash = self._calculate_row_hash(row_data)
                 actual_row_index = row_idx - 2  # 从0开始计数
 
+                # 生成更清晰的行名称
+                row_name = self._generate_row_name(sheet_name, actual_row_index, row_data)
+
                 row_asset = DataRow(
                     id=f"excel.{file_id}.sheet.{sheet_id}.row_{actual_row_index}_{row_hash[:8]}",
-                    name=f"行_{actual_row_index}",
+                    name=row_name,  # 使用新生成的清晰名称
                     type="row",
-                    description=f"数据行 {actual_row_index} in {sheet.title}",
+                    description=f"数据行 {actual_row_index} in {sheet.title} - 包含{len(row_data)}个字段",
                     owner="文件采集器",
-                    tags=["data_row", "行数据"],
+                    tags=["data_row", "行数据", "excel数据"],
                     created_time=timestamp,
                     updated_time=timestamp,
                     table_id=f"excel.{file_id}.sheet.{sheet_id}",
@@ -460,13 +501,16 @@ class FileCollector(BaseMetadataCollector):
 
                 row_hash = self._calculate_row_hash(row_data)
 
+                # 生成更清晰的行名称
+                row_name = self._generate_row_name(table_name, idx, row_data)
+
                 row_asset = DataRow(
                     id=f"sqlite.{db_id}.table.{table_id}.row_{idx}_{row_hash[:8]}",
-                    name=f"行_{idx}",
+                    name=row_name,  # 使用新生成的清晰名称
                     type="row",
-                    description=f"数据行 {idx} in {table_name}",
+                    description=f"数据行 {idx} in {table_name} - 包含{len(row_data)}个字段",
                     owner="文件采集器",
-                    tags=["data_row", "行数据"],
+                    tags=["data_row", "行数据", "sqlite数据"],
                     created_time=timestamp,
                     updated_time=timestamp,
                     table_id=f"sqlite.{db_id}.table.{table_id}",
